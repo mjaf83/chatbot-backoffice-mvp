@@ -26,14 +26,26 @@ Question: {question}
 prompt = ChatPromptTemplate.from_template(template)
 chain = prompt | llm | StrOutputParser()
 
+
+# Chitchat Prompt
+chitchat_template = """You are a helpful and professional AI assistant for a corporation.
+The user is engaging in general conversation (greetings, small talk, or general questions).
+Answer politely and professionally. You do not need to use the knowledge base for this.
+If they ask about specific company policies or data that you don't know, suggest they ask a more specific question so you can look it up.
+
+Question: {question}
+"""
+chitchat_prompt = ChatPromptTemplate.from_template(chitchat_template)
+chitchat_chain = chitchat_prompt | llm | StrOutputParser()
+
 async def get_relevant_documents(question: str, db_session, category: str = None, top_k: int = 4):
     query_vector = embeddings_model.embed_query(question)
     
     # Base query: Select DocumentChunks, order by distance
     stmt = select(DocumentChunk).join(KnowledgeSource)
     
-    # Filter by category if provided and not "default"
-    if category and category.lower() != "default":
+    # Filter by category if provided and not "default" or "chitchat"
+    if category and category.lower() not in ["default", "chitchat"]:
         stmt = stmt.where(KnowledgeSource.category == category)
         
     # Vector Search (L2 distance)
@@ -46,10 +58,15 @@ async def get_relevant_documents(question: str, db_session, category: str = None
     return chunks
 
 async def generate_answer(question: str, db_session, category: str = None):
+    # Handle Chitchat/Generic
+    if category == "chitchat":
+        answer = await chitchat_chain.ainvoke({"question": question})
+        return {"answer": answer, "sources": [], "context_used": "General Conversation"}
+
     docs = await get_relevant_documents(question, db_session, category)
     
     if not docs:
-        return {"answer": "I could not find any relevant information in the knowledge base.", "sources": []}
+        return {"answer": "Lo siento, no dispongo de información suficiente en mi base de conocimientos para responder a esa pregunta.", "sources": []}
         
     context_text = "\n\n".join([doc.content for doc in docs])
     

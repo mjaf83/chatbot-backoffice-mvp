@@ -12,7 +12,7 @@ if %errorlevel% neq 0 (
 )
 
 echo [2/3] Starting Backend (FastAPI)...
-start "Backend API" cmd /k "cd backend && .\venv\Scripts\activate && uvicorn main:app --reload"
+start "Backend API" cmd /k "cd backend && .\venv\Scripts\activate && uvicorn main:app --reload --host 0.0.0.0"
 
 echo [3/3] Starting Frontend (Next.js)...
 start "Frontend App" cmd /k "cd frontend && npm run dev"

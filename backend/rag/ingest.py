@@ -1,3 +1,4 @@
+import os
 from database import AsyncSessionLocal
 from models import KnowledgeSource, DocumentChunk, SourceType
 from langchain_community.document_loaders import PyPDFLoader, TextLoader

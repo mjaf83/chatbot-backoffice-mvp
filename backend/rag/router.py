@@ -1,7 +1,7 @@
 from typing import List
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama import ChatOllama
-from langchain_core.pydantic_v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 # Define Output Structure
 class RouteQuery(BaseModel):
@@ -19,7 +19,8 @@ structured_llm_router = llm.with_structured_output(RouteQuery)
 system = """You are an expert at routing a user question to a vectorstore or datasource.
 The available datasources are: {datasources}.
 Return the name of the datasource that best matches the user question.
-If the question is general conversation, route to 'default'.
+If the user is greeting, just chatting, or asking for general help, route to 'chitchat'.
+If the question is specific but doesn't match any datasource, route to 'default'.
 """
 route_prompt = ChatPromptTemplate.from_messages(
     [
@@ -34,9 +35,9 @@ async def route_question(question: str, available_categories: List[str]):
     """
     Determines the category/datasource for a given question.
     """
-    if not available_categories:
-        return "default"
-        
-    datasources_str = ", ".join(available_categories)
+    # Always allow routing to chitchat, even if no sources exist
+    valid_sources = available_categories + ["chitchat", "default"]
+    datasources_str = ", ".join(valid_sources)
+    
     result = await router.ainvoke({"datasources": datasources_str, "question": question})
     return result.datasource

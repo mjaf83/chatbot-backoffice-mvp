@@ -21,8 +21,10 @@ async def get_db():
     async with AsyncSessionLocal() as session:
         yield session
 
+from sqlalchemy import text
+
 async def init_db():
     async with engine.begin() as conn:
         # Create extension if not exists (requires superuser, which admin is in our docker setup)
-        await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.create_all)
