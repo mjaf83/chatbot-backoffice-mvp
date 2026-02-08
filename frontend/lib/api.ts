@@ -10,6 +10,20 @@ export interface ChatResponse {
     sources: string[];
 }
 
+export interface Source {
+    id: number;
+    name: string;
+    source_type: string;
+    category: string;
+    created_at: string;
+}
+
+export async function getSources() {
+    const res = await fetch(`${API_URL}/sources`);
+    if (!res.ok) throw new Error("Failed to fetch sources");
+    return res.json() as Promise<Source[]>;
+}
+
 export async function sendMessage(message: string, history: ChatMessage[]) {
     const res = await fetch(`${API_URL}/chat`, {
         method: "POST",

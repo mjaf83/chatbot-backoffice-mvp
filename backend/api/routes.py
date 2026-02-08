@@ -11,6 +11,13 @@ from sqlalchemy import select
 
 router = APIRouter()
 
+@router.get("/sources")
+async def get_sources(db: AsyncSession = Depends(get_db)):
+    stmt = select(KnowledgeSource).order_by(KnowledgeSource.created_at.desc())
+    result = await db.execute(stmt)
+    sources = result.scalars().all()
+    return sources
+
 @router.post("/ingest/file")
 async def upload_file(
     file: UploadFile = File(...), 
