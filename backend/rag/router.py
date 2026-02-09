@@ -11,7 +11,7 @@ class RouteQuery(BaseModel):
         description="Given a user question choose which datasource would be most relevant for answering their question",
     )
 
-llm = ChatOllama(model="llama3.1", temperature=0)
+llm = ChatOllama(model="llama3.1:8b", temperature=0, base_url="http://127.0.0.1:11434")
 # Llama 3.1 supports structured output via json mode or tools, Langchain handles this.
 structured_llm_router = llm.with_structured_output(RouteQuery)
 

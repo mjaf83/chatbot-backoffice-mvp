@@ -10,7 +10,7 @@ UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Initialize Embeddings
-embeddings_model = OllamaEmbeddings(model="nomic-embed-text")
+embeddings_model = OllamaEmbeddings(model="nomic-embed-text:latest", base_url="http://127.0.0.1:11434")
 
 async def ingest_file(file, filename: str, db_session, category: str = "general"):
     file_path = os.path.join(UPLOAD_DIR, filename)

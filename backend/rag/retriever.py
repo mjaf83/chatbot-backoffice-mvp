@@ -6,8 +6,8 @@ from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
-embeddings_model = OllamaEmbeddings(model="nomic-embed-text")
-llm = ChatOllama(model="llama3.1", temperature=0)
+embeddings_model = OllamaEmbeddings(model="nomic-embed-text:latest", base_url="http://127.0.0.1:11434")
+llm = ChatOllama(model="llama3.1:8b", temperature=0, base_url="http://127.0.0.1:11434")
 
 template = """You are a professional AI assistant for a corporate knowledge base.
 Your goal is to answer questions ACCURATELY based ONLY on the provided context.

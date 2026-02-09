@@ -70,19 +70,24 @@ async def ingest_manual(entry: ManualEntry, db: AsyncSession = Depends(get_db)):
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest, db: AsyncSession = Depends(get_db)):
-    # 1. Get available categories
-    stmt = select(KnowledgeSource.category).distinct()
-    result = await db.execute(stmt)
-    categories = [row[0] for row in result.all()]
-    
-    # 2. Router
-    category = await route_question(request.message, categories)
-    print(f"Routing to: {category}")
-    
-    # 3. Retrieval & Generation
-    result = await generate_answer(request.message, db, category)
-    
-    return ChatResponse(
-        response=result["answer"],
-        sources=[str(s) for s in result["sources"]]
-    )
+    try:
+        # 1. Get available categories
+        stmt = select(KnowledgeSource.category).distinct()
+        result = await db.execute(stmt)
+        categories = [row[0] for row in result.all()]
+        
+        # 2. Router
+        category = await route_question(request.message, categories)
+        print(f"Routing to: {category}")
+        
+        # 3. Retrieval & Generation
+        result = await generate_answer(request.message, db, category)
+        
+        return ChatResponse(
+            response=result["answer"],
+            sources=[str(s) for s in result["sources"]]
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Debug Error: {str(e)}")
