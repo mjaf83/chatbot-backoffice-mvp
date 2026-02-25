@@ -15,7 +15,7 @@ A professional RAG (Retrieval-Augmented Generation) chatbot capable of answering
 ## Prerequisites
 1. **Docker Desktop** (for PostgreSQL + pgvector).
 2. **Ollama** installed locally.
-   - Run: `ollama pull llama3.1`
+   - Run: `ollama pull llama3.1:8b`
    - Run: `ollama pull nomic-embed-text`
    - Start: `ollama serve`
 3. **Node.js** (v18+) and **Python** (v3.10+).
