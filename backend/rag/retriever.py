@@ -3,7 +3,9 @@ from sqlalchemy.orm import selectinload
 from database import AsyncSessionLocal
 from models import KnowledgeSource, DocumentChunk
 from langchain_ollama import OllamaEmbeddings, ChatOllama
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from langchain_core.output_parsers import StrOutputParser
 from langchain_core.output_parsers import StrOutputParser
 
 embeddings_model = OllamaEmbeddings(model="nomic-embed-text:latest", base_url="http://127.0.0.1:11434")
@@ -20,9 +22,12 @@ Rules:
 
 Context:
 {context}
-
-Question: {question}
 """
+prompt = ChatPromptTemplate.from_messages([
+    ("system", template),
+    MessagesPlaceholder(variable_name="history"),
+    ("human", "{question}"),
+])
 prompt = ChatPromptTemplate.from_template(template)
 chain = prompt | llm | StrOutputParser()
 
@@ -32,9 +37,12 @@ chitchat_template = """You are a helpful and professional AI assistant for a cor
 The user is engaging in general conversation (greetings, small talk, or general questions).
 Answer politely and professionally. You do not need to use the knowledge base for this.
 If they ask about specific company policies or data that you don't know, suggest they ask a more specific question so you can look it up.
-
-Question: {question}
 """
+chitchat_prompt = ChatPromptTemplate.from_messages([
+    ("system", chitchat_template),
+    MessagesPlaceholder(variable_name="history"),
+    ("human", "{question}"),
+])
 chitchat_prompt = ChatPromptTemplate.from_template(chitchat_template)
 chitchat_chain = chitchat_prompt | llm | StrOutputParser()
 
@@ -57,10 +65,24 @@ async def get_relevant_documents(question: str, db_session, category: str = None
     
     return chunks
 
-async def generate_answer(question: str, db_session, category: str = None):
+def _format_history(history_list):
+    formatted_history = []
+    if not history_list:
+        return formatted_history
+        
+    for msg in history_list:
+        if msg.get("role") == "user":
+            formatted_history.append(HumanMessage(content=msg.get("content", "")))
+        elif msg.get("role") == "assistant":
+            formatted_history.append(AIMessage(content=msg.get("content", "")))
+    return formatted_history
+
+async def generate_answer(question: str, db_session, category: str = None, history: list = None):
+    history_msgs = _format_history(history)
+    
     # Handle Chitchat/Generic
     if category == "chitchat":
-        answer = await chitchat_chain.ainvoke({"question": question})
+        answer = await chitchat_chain.ainvoke({"question": question, "history": history_msgs})
         return {"answer": answer, "sources": [], "context_used": "General Conversation"}
 
     docs = await get_relevant_documents(question, db_session, category)
@@ -70,7 +92,11 @@ async def generate_answer(question: str, db_session, category: str = None):
         
     context_text = "\n\n".join([doc.content for doc in docs])
     
-    answer = await chain.ainvoke({"context": context_text, "question": question})
+    answer = await chain.ainvoke({
+        "context": context_text, 
+        "question": question,
+        "history": history_msgs
+    })
     
     # Extract sources
     sources = list(set([doc.source_id for doc in docs])) # Just IDs for now, could fetch names

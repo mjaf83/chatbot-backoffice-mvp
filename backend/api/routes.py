@@ -6,8 +6,9 @@ from rag.ingest import ingest_file
 from rag.sql_ingest import ingest_sql_view
 from rag.router import route_question
 from rag.retriever import generate_answer
-from models import KnowledgeSource, SourceType
+from models import KnowledgeSource, SourceType, Conversation
 from sqlalchemy import select
+import uuid
 
 router = APIRouter()
 
@@ -71,6 +72,30 @@ async def ingest_manual(entry: ManualEntry, db: AsyncSession = Depends(get_db)):
 @router.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     try:
+        # 0. Conversation Management
+        conversation = None
+        if request.conversation_id:
+            stmt = select(Conversation).where(Conversation.id == request.conversation_id)
+            result = await db.execute(stmt)
+            conversation = result.scalar_one_or_none()
+            
+        if not conversation:
+            # Create a new conversation
+            conv_id = request.conversation_id or str(uuid.uuid4())
+            title = request.message[:50] + "..." if len(request.message) > 50 else request.message
+            conversation = Conversation(
+                id=conv_id,
+                title=title,
+                history=[]
+            )
+            db.add(conversation)
+            
+        # Append user message to history
+        # Note: we need to reassign to trigger SQLAlchemy JSON detection
+        current_history = list(conversation.history)
+        current_history.append({"role": "user", "content": request.message})
+        conversation.history = current_history
+
         # 1. Get available categories
         stmt = select(KnowledgeSource.category).distinct()
         result = await db.execute(stmt)
@@ -81,11 +106,21 @@ async def chat_endpoint(request: ChatRequest, db: AsyncSession = Depends(get_db)
         print(f"Routing to: {category}")
         
         # 3. Retrieval & Generation
-        result = await generate_answer(request.message, db, category)
+        # Pass the history (excluding the current user message to avoid duplication in retriever if we want, but actually it's fine, let's pass history up to previous msgs)
+        history_for_llm = current_history[:-1] 
+        result = await generate_answer(request.message, db, category, history=history_for_llm)
+        
+        # Append assistant response to history
+        current_history = list(conversation.history)
+        current_history.append({"role": "assistant", "content": result["answer"]})
+        conversation.history = current_history
+        
+        await db.commit()
         
         return ChatResponse(
             response=result["answer"],
-            sources=[str(s) for s in result["sources"]]
+            sources=[str(s) for s in result["sources"]],
+            conversation_id=conversation.id
         )
     except Exception as e:
         import traceback

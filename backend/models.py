@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum, JSON
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from pgvector.sqlalchemy import Vector
@@ -39,3 +40,13 @@ class DocumentChunk(Base):
     metadata_json = Column(JSON, nullable=True)
     
     source = relationship("KnowledgeSource", back_populates="chunks")
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+
+    id = Column(String, primary_key=True, index=True) # UUID string
+    title = Column(String, nullable=True)
+    history = Column(JSONB, default=list) # [{"role": "user", "content": "..."}, ...]
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())

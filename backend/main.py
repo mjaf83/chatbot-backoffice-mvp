@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from database import init_db
 from api.routes import router as api_router
+from api.conversations import router as conversations_router
 from contextlib import asynccontextmanager
 
 @asynccontextmanager
@@ -23,6 +24,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix="/api")
+app.include_router(conversations_router, prefix="/api/conversations", tags=["Conversations"])
 
 @app.get("/")
 def read_root():
